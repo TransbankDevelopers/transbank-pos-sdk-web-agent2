@@ -46,7 +46,7 @@
   "dependencies": {
     "auto-launch": "^5.0.6",
     "electron-squirrel-startup": "^1.0.1",
-    "socket.io": "^4.8.0",
+    "socket.io": "^4.8.1",
     "transbank-pos-sdk": "github:transbankdevelopers/transbank-pos-sdk-nodejs#develop",
     "winston": "^3.15.0",
     "winston-daily-rotate-file": "^5.0.0"
