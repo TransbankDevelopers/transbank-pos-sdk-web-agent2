@@ -48,7 +48,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "socket.io": "^4.8.0",
     "transbank-pos-sdk": "github:transbankdevelopers/transbank-pos-sdk-nodejs#develop",
-    "winston": "^3.15.0",
+    "winston": "^3.16.0",
     "winston-daily-rotate-file": "^5.0.0"
   }
 }
