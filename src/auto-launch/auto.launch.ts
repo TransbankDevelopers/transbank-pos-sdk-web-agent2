@@ -11,8 +11,8 @@ export function setupAutoLaunch(): void {
       name: app.name,
       path: app.getPath("exe"),
       mac: {
-        useLaunchAgent: true,
-      },
+        useLaunchAgent: true
+      }
     });
   }
 }

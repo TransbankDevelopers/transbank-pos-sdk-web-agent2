@@ -33,7 +33,7 @@ export default class PosHandler {
   getPortStatus(eventName: string): void {
     const response = {
       connected: this.pos.connected,
-      activePort: this.pos.getConnectedPort(),
+      activePort: this.pos.getConnectedPort()
     };
     this.io.emit(eventName, { success: true, response });
   }
