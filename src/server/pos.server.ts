@@ -14,10 +14,13 @@ const cors = {
   credentials: true
 };
 
-const io = new socketIo.Server(PORT, {cors, allowEIO3: true});
-const posHandler = new PosHandler(io, pos);
-
 export default class PosServer {
+  io: socketIo.Server;
+  posHandler: PosHandler;
+  constructor() {
+    this.io = new socketIo.Server(PORT, { cors, allowEIO3: true });
+    this.posHandler = new PosHandler(this.io, pos);
+  }
   start(): void {
     let clientsCount = 0;
 
@@ -36,16 +39,16 @@ export default class PosServer {
       }
     }
 
-    io.on("connection", (socket) => {
+    this.io.on("connection", (socket) => {
       updateClientCount(clientsCount + 1);
 
       pos.on("port_opened", (port) => {
-        io.emit("event.port_opened", port);
+        this.io.emit("event.port_opened", port);
         updatePosConnectionStatus(true);
       });
 
       pos.on("port_closed", () => {
-        io.emit("event.port_closed");
+        this.io.emit("event.port_closed");
         updatePosConnectionStatus(false);
       });
 
@@ -54,69 +57,69 @@ export default class PosServer {
       });
 
       socket.on("getVersion", () => {
-        io.emit("getVersion.response", version);
+        this.io.emit("getVersion.response", version);
       });
 
       socket.on("openPort", ({ port, baudrate, eventName }) => {
-        posHandler.openPort(port, baudrate, eventName);
+        this.posHandler.openPort(port, baudrate, eventName);
       });
 
       socket.on("closePort", ({ eventName }) => {
-        posHandler.closePort(eventName);
+        this.posHandler.closePort(eventName);
       });
 
       socket.on("getPortStatus", ({ eventName }) => {
-        posHandler.getPortStatus(eventName);
+        this.posHandler.getPortStatus(eventName);
       });
 
       socket.on("listPorts", ({ eventName }) => {
-        posHandler.listPorts(eventName);
+        this.posHandler.listPorts(eventName);
       });
 
       socket.on("autoconnect", ({ baudrate, eventName }) => {
-        posHandler.autoConnect(baudrate, eventName);
+        this.posHandler.autoConnect(baudrate, eventName);
       });
 
       socket.on("poll", ({ eventName }) => {
-        posHandler.poll(eventName);
+        this.posHandler.poll(eventName);
       });
 
       socket.on("loadKeys", ({ eventName }) => {
-        posHandler.loadKeys(eventName);
+        this.posHandler.loadKeys(eventName);
       });
 
       socket.on("closeDay", ({ eventName }) => {
-        posHandler.closeDay(eventName);
+        this.posHandler.closeDay(eventName);
       });
 
       socket.on("getTotals", ({ eventName }) => {
-        posHandler.getTotals(eventName);
+        this.posHandler.getTotals(eventName);
       });
 
       socket.on("getLastSale", ({ eventName }) => {
-        posHandler.getLastSale(eventName);
+        this.posHandler.getLastSale(eventName);
       });
 
       socket.on("salesDetail", ({ printOnPos, eventName }) => {
-        posHandler.salesDetail(printOnPos, eventName);
+        this.posHandler.salesDetail(printOnPos, eventName);
       });
 
       socket.on("refund", ({ operationId, eventName }) => {
-        posHandler.refund(operationId, eventName);
+        this.posHandler.refund(operationId, eventName);
       });
 
       socket.on("changeToNormalMode", ({ eventName }) => {
-        posHandler.changeToNormalMode(eventName);
+        this.posHandler.changeToNormalMode(eventName);
       });
 
       socket.on("sale", ({ amount, ticket, eventName }) => {
-        posHandler.sale(amount, ticket, eventName);
+        this.posHandler.sale(amount, ticket, eventName);
       });
 
       socket.on(
         "multicodeSale",
         ({ amount, ticket, commerceCode = "0", eventName }) => {
-          posHandler.multicodeSale(amount, ticket, commerceCode, eventName);
+          this.posHandler.multicodeSale(amount, ticket, commerceCode, eventName);
         }
       );
     });

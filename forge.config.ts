@@ -14,7 +14,7 @@ import { rendererConfig } from "./webpack.renderer.config";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: "./src/assets/icons/icon"
+    icon: "./src/assets/icons/icon",
   },
   rebuildConfig: {},
   makers: [
@@ -24,8 +24,8 @@ const config: ForgeConfig = {
     new MakerDMG({
       icon: "./src/assets/icons/icon.icns",
       format: "ULFO",
-      overwrite: true
-    } as MakerDMGConfig)
+      overwrite: true,
+    } as MakerDMGConfig),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
@@ -39,11 +39,19 @@ const config: ForgeConfig = {
             js: "./src/renderer.ts",
             name: "main_window",
             preload: {
-              js: "./src/preload.ts"
-            }
-          }
-        ]
-      }
+              js: "./src/preload.ts",
+            },
+          },
+          {
+            html: "./src/error.html",
+            js: "./src/error_renderer.ts",
+            name: "error_window",
+            preload: {
+              js: "./src/error_preload.ts",
+            },
+          },
+        ],
+      },
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
@@ -54,9 +62,9 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true
-    })
-  ]
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
+  ],
 };
 
 export default config;

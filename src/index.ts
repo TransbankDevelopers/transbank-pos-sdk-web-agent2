@@ -1,6 +1,15 @@
 import path from "path";
 import url from "url";
-import { app, BrowserWindow, nativeImage, Tray, Menu, protocol, net } from "electron";
+import {
+  app,
+  BrowserWindow,
+  nativeImage,
+  Tray,
+  Menu,
+  protocol,
+  net,
+  ipcMain,
+} from "electron";
 import WindowsManager from "./windows.manager";
 import PosServer from "./server/pos.server";
 import logger from "./logger/logger";
@@ -11,6 +20,11 @@ import { setupAutoLaunch } from "./auto-launch/auto.launch";
 // whether you're running in development or production).
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+declare const ERROR_WINDOW_WEBPACK_ENTRY: string;
+declare const ERROR_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+
+const DEFAULT_ERROR_TITLE = "Error en la aplicación";
+const DEFAULT_ERROR_MESSAGE = "Ha ocurrido un error al iniciar el agente";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
@@ -23,19 +37,22 @@ if (!gotTheLock) {
   app.quit();
 }
 
-const posServer = new PosServer();
 const originalConsoleLog = console.log;
 
 console.log = (...args) => {
   originalConsoleLog(...args);
-  
+
   logger.info([...args]);
 
   const windowsManager = WindowsManager.getMainWindow();
   if (windowsManager !== null) {
-    windowsManager.webContents.send('log', [...args])
+    windowsManager.webContents.send("log", [...args]);
   }
-}
+};
+
+ipcMain.on("close-app", () => {
+  app.quit();
+});
 
 const createWindow = (): void => {
   // Create the browser window.
@@ -46,8 +63,8 @@ const createWindow = (): void => {
     resizable: false,
     show: false,
     webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY
-    }
+      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+    },
   });
 
   // and load the index.html of the app.
@@ -58,50 +75,85 @@ const createWindow = (): void => {
   WindowsManager.setMainWindow(mainWindow);
 
   let tray = null;
-  mainWindow.on('minimize', () => {
+  mainWindow.on("minimize", () => {
     mainWindow.hide();
     tray = createTray(mainWindow);
   });
 
-  mainWindow.on('restore', () => {
+  mainWindow.on("restore", () => {
     mainWindow.show();
     tray.destroy();
   });
 
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on("did-finish-load", () => {
     mainWindow.show();
   });
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();
+};
 
-  posServer.start();
+const createErrorWindow = ({ errorTitle, errorMessage }): void => {
+  const errorWindow = new BrowserWindow({
+    width: 450,
+    height: 350,
+    icon: getAppIcon(),
+    resizable: false,
+    title: "Error",
+    webPreferences: {
+      preload: ERROR_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  errorWindow.loadURL(ERROR_WINDOW_WEBPACK_ENTRY);
+  errorWindow.webContents.once("did-finish-load", () => {
+    errorWindow.webContents.send("startup-error", {
+      errorTitle,
+      errorMessage,
+    });
+  });
 };
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'media-loader', privileges: { bypassCSP: true } }
-])
+  { scheme: "media-loader", privileges: { bypassCSP: true } },
+]);
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", async () => {
-  
-  if(process.platform == "darwin") {
+  if (process.platform == "darwin") {
     app.dock.setIcon(getAssetPath("icon.png"));
   }
 
   protocol.handle("media-loader", (request) => {
-    const filePath = request.url.slice('media-loader://'.length)
-    const fullPath = path.join(__dirname, filePath)
-    const urlPath = url.pathToFileURL(fullPath).toString()
-    return net.fetch(urlPath)
+    const filePath = request.url.slice("media-loader://".length);
+    const fullPath = path.join(__dirname, filePath);
+    const urlPath = url.pathToFileURL(fullPath).toString();
+    return net.fetch(urlPath);
   });
 
   setupAutoLaunch();
   setAppMenu();
-  
-  createWindow()
+
+  const posServer = new PosServer();
+  posServer.start();
+  posServer.io.httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    const isPortError = err.code === "EADDRINUSE";
+    createErrorWindow({
+      errorTitle: isPortError
+        ? "Error iniciando el servidor"
+        : DEFAULT_ERROR_TITLE,
+      errorMessage: isPortError
+        ? "El puerto 8090 se encuentra en uso, no es posible iniciar el servidor"
+        : DEFAULT_ERROR_MESSAGE,
+    });
+  });
+  posServer.io.httpServer.on("listening", () => {
+    createWindow();
+  });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -122,7 +174,7 @@ app.on("activate", () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-function getAssetPath(icon = ''): string {
+function getAssetPath(icon = ""): string {
   const iconPath = path.join(__dirname, `/assets/icons/${icon}`);
   return iconPath;
 }
@@ -142,32 +194,38 @@ const createTray = (window: BrowserWindow) => {
   const tray = new Tray(createNativeImage());
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Mostrar', click: function () {
+      label: "Mostrar",
+      click: function () {
         window.show();
-      }
+      },
     },
     {
-      label: 'Salir', click: function () {
+      label: "Salir",
+      click: function () {
         app.quit();
-      }
-    }
+      },
+    },
   ]);
 
-  tray.on('double-click', function () {
+  tray.on("double-click", function () {
     window.show();
   });
 
   tray.setContextMenu(contextMenu);
   return tray;
-}
+};
 
 const createNativeImage = () => {
-  const icon: string = process.platform === 'win32' ? 'winTrayIcon.png' : 'trayIcon.png';
-  const appIcon: string = path.join(__dirname, `/assets/icons/trayIcons/${icon}`)
+  const icon: string =
+    process.platform === "win32" ? "winTrayIcon.png" : "trayIcon.png";
+  const appIcon: string = path.join(
+    __dirname,
+    `/assets/icons/trayIcons/${icon}`
+  );
 
   const image = nativeImage.createFromPath(appIcon);
 
   image.setTemplateImage(true);
 
   return image;
-}
+};

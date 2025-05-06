@@ -26,7 +26,7 @@
  * ```
  */
 
-import './index.css';
+import './styles.css';
 import { version } from '../package.json';
 import { setupToggleLogs } from './renderer/toggle.logs'
 
