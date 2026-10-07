@@ -1,0 +1,116 @@
+name: Build
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: build-${{ github.repository }}-pr-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    build_windows:
+        outputs:
+            artifact_url: ${{ steps.artifact_upload.outputs.artifact-url }}
+        runs-on: windows-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+            - name: Use Node.js
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+              with:
+                  node-version: 20
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build Windows installer
+              run: npm run make
+
+            - name: Upload Windows build
+              id: artifact_upload
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+              with:
+                  name: build-windows
+                  path: out/make
+                  if-no-files-found: error
+                  retention-days: 7
+
+    build_macos:
+        outputs:
+            artifact_url: ${{ steps.artifact_upload.outputs.artifact-url }}
+        runs-on: macos-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+            - name: Use Node.js
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+              with:
+                  node-version: 20
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build macOS installer
+              run: npm run make
+
+            - name: Upload macOS build
+              id: artifact_upload
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+              with:
+                  name: build-macos
+                  path: out/make
+                  if-no-files-found: error
+                  retention-days: 7
+
+    comment_windows_artifact:
+        if: always() && needs.build_windows.result == 'success'
+        needs: build_windows
+        permissions:
+            contents: read
+            issues: write
+        uses: TransbankDevelopers/transbank-github-actions-templates/.github/workflows/plugin-pr-artifact.yml@f104ee093bb1edab2594a19a51bc8be5c201bc2e
+        with:
+            pr_number: ${{ github.event.pull_request.number }}
+            source_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
+            artifact_url: ${{ needs.build_windows.outputs.artifact_url }}
+            artifact_name: Build Windows
+            comment_marker: "<!-- build-windows-artifact-link -->"
+            comment_prefix: Build Windows disponible
+        secrets: inherit
+
+    comment_macos_artifact:
+        if: always() && needs.build_macos.result == 'success'
+        needs: build_macos
+        permissions:
+            contents: read
+            issues: write
+        uses: TransbankDevelopers/transbank-github-actions-templates/.github/workflows/plugin-pr-artifact.yml@f104ee093bb1edab2594a19a51bc8be5c201bc2e
+        with:
+            pr_number: ${{ github.event.pull_request.number }}
+            source_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
+            artifact_url: ${{ needs.build_macos.outputs.artifact_url }}
+            artifact_name: Build macOS
+            comment_marker: "<!-- build-macos-artifact-link -->"
+            comment_prefix: Build macOS disponible
+        secrets: inherit
+
+    sonar:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  fetch-depth: 0
+
+            - name: SonarQube Scan
+              uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
