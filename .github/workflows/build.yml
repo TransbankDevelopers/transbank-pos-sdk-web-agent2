@@ -84,7 +84,6 @@ jobs:
             artifact_name: Build Windows
             comment_marker: "<!-- build-windows-artifact-link -->"
             comment_prefix: Build Windows disponible
-        secrets: inherit
 
     comment_macos_artifact:
         if: always() && needs.build_macos.result == 'success'
@@ -100,7 +99,6 @@ jobs:
             artifact_name: Build macOS
             comment_marker: "<!-- build-macos-artifact-link -->"
             comment_prefix: Build macOS disponible
-        secrets: inherit
 
     sonar:
         runs-on: ubuntu-latest
