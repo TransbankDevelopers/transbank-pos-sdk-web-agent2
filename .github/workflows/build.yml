@@ -36,8 +36,9 @@ jobs:
               id: artifact_upload
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
-                  name: build-windows
-                  path: out/make
+                  name: windows-installer.exe
+                  path: out/make/squirrel.windows/x64/*.exe
+                  archive: false
                   if-no-files-found: error
                   retention-days: 7
 
@@ -65,8 +66,9 @@ jobs:
               id: artifact_upload
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
-                  name: build-macos
-                  path: out/make
+                  name: macos-installer.dmg
+                  path: out/make/*.dmg
+                  archive: false
                   if-no-files-found: error
                   retention-days: 7
 
@@ -82,7 +84,7 @@ jobs:
             pr_number: ${{ github.event.pull_request.number }}
             source_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
             artifact_url: ${{ needs.build_windows.outputs.artifact_url }}
-            artifact_name: Build Windows
+            artifact_name: windows-installer.exe
             comment_marker: "<!-- build-windows-artifact-link -->"
             comment_prefix: Build Windows disponible
 
@@ -98,7 +100,7 @@ jobs:
             pr_number: ${{ github.event.pull_request.number }}
             source_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
             artifact_url: ${{ needs.build_macos.outputs.artifact_url }}
-            artifact_name: Build macOS
+            artifact_name: macos-installer.dmg
             comment_marker: "<!-- build-macos-artifact-link -->"
             comment_prefix: Build macOS disponible
 
