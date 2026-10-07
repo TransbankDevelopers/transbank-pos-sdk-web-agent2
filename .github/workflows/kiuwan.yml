@@ -6,6 +6,7 @@ on:
 
 permissions:
     contents: read
+    pull-requests: write
 
 concurrency:
     group: kiuwan-${{ github.repository }}-pr-${{ github.event.pull_request.number }}
